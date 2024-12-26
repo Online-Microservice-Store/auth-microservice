@@ -20,3 +20,29 @@ model User {
   name String
   password String
 }
+// Modelos de la verdadera BD
+
+model Person{
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  name String
+  lastname String
+  identification String
+}
+
+model Profile{
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  username String
+  password String
+  email String
+  ocupation String
+}
+
+// model Admin {
+
+// }
+// model Trader {
+
+// }
+// model Client{
+
+// }
