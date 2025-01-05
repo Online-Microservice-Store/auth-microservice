@@ -2,6 +2,7 @@ import { Controller, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { CreateEntity, LoginUserDto, RegisterUserDto } from './dto';
+import { PaginationDto } from 'common';
 
 @Controller()
 export class AuthController {
@@ -37,4 +38,21 @@ export class AuthController {
   verifyToken(@Payload() token:string){
     return this.authService.verifyToken(token);
   }
+  
+  // GET ALL
+  @MessagePattern('auth.find_all.client')
+  get_all_Clients(@Payload() paginationDto: PaginationDto){
+    return this.authService.get_all_clients(paginationDto);
+  }
+  @MessagePattern('auth.find_all.trader')
+  get_all_Traders(@Payload() paginationDto: PaginationDto){
+    return this.authService.get_all_traders(paginationDto);
+  }
+  @MessagePattern('auth.find_all.admin')
+  get_all_Admins(@Payload() paginationDto: PaginationDto){
+    return this.authService.get_all_admins(paginationDto);
+  }
+
+  // GET ONE
+
 }

@@ -7,6 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { envs } from 'src/config';
 import { JwtPayload2 } from './interfaces/jwt-payload.interface2';
+import { PaginationDto } from 'common';
 @Injectable()
 export class AuthService extends PrismaClient implements OnModuleInit {
     private readonly logger = new Logger("auth-service")
@@ -222,39 +223,6 @@ export class AuthService extends PrismaClient implements OnModuleInit {
             });
         }
     }
-    // async registerUser(registerUserDto: RegisterUserDto){
-    //     const { name, email, password} = registerUserDto;
-    //     try {
-    //         const user = await this.user.findUnique({
-    //             where: {email}
-    //         });
-    //         if( user ){
-    //             throw new RpcException({
-    //                 status: 400,
-    //                 message: 'User already exists'
-    //             });
-    //         } 
-
-    //         const newUser = await this.user.create({
-    //             data:  {
-    //                 email,
-    //                 password: bcrypt.hashSync(password, 10), //TODO: Hash
-    //                 name
-    //             }
-    //         });
-    //         const {password: __, ...rest} = newUser; 
-    //         return {
-    //             user: rest,
-    //             token: await this.signJWT(rest)
-    //         }
-
-    //     } catch (error) {
-    //         throw new RpcException({
-    //             status: 400,
-    //             message: error.message
-    //         })
-    //     }
-    // }
 
     async loginUser(loginUserDto: LoginUserDto){
         const { email, password } = loginUserDto;
@@ -291,4 +259,143 @@ export class AuthService extends PrismaClient implements OnModuleInit {
             })
         }
     }
+
+    // GET_ALL
+    async get_all_clients(paginationDto: PaginationDto){
+        const { page, limit } = paginationDto;
+
+        const totalPages = await this.client.count(
+        // { where: { available: true } }
+        );
+        const lastPage = Math.ceil(totalPages / limit);
+
+        const clients =await this.client.findMany({
+            skip: (page - 1) * limit,
+            take: limit,
+        });
+
+        const detailedClients = await Promise.all(
+            clients.map(async (client) => {
+              // Obtén la información de la persona asociada al cliente
+              const person = await this.person.findUnique({
+                where: { id: client.personId },
+              });
+        
+              // Si la persona tiene un `profileId`, obtén el perfil asociado
+              const profile = person?.profileId
+                ? await this.profile.findUnique({
+                    where: { id: person.profileId },
+                  })
+                : null;
+        
+              return {
+                ...client,
+                person,
+                profile,
+              };
+            })
+          );
+        
+        return {
+            data: detailedClients,
+            meta: {
+                total: totalPages,
+                page: page,
+                lastPage: lastPage,
+            },
+        };
+    }
+
+    async get_all_traders(paginationDto: PaginationDto){
+        const { page, limit } = paginationDto;
+
+        const totalPages = await this.trader.count(
+        // { where: { available: true } }
+        );
+        const lastPage = Math.ceil(totalPages / limit);
+
+        const traders =await this.trader.findMany({
+            skip: (page - 1) * limit,
+            take: limit,
+        });
+
+        const detailedTraders = await Promise.all(
+            traders.map(async (trader) => {
+              // Obtén la información de la persona asociada al cliente
+              const person = await this.person.findUnique({
+                where: { id: trader.personId },
+              });
+        
+              // Si la persona tiene un `profileId`, obtén el perfil asociado
+              const profile = person?.profileId
+                ? await this.profile.findUnique({
+                    where: { id: person.profileId },
+                  })
+                : null;
+        
+              return {
+                ...trader,
+                person,
+                profile,
+              };
+            })
+          );
+        
+        return {
+            data: detailedTraders,
+            meta: {
+                total: totalPages,
+                page: page,
+                lastPage: lastPage,
+            },
+        };
+    }
+
+    async get_all_admins(paginationDto: PaginationDto){
+        const { page, limit } = paginationDto;
+
+        const totalPages = await this.admin.count(
+        // { where: { available: true } }
+        );
+        const lastPage = Math.ceil(totalPages / limit);
+
+        const admins =await this.admin.findMany({
+            skip: (page - 1) * limit,
+            take: limit,
+        });
+
+        const detailedAdmins = await Promise.all(
+            admins.map(async (admin) => {
+              // Obtén la información de la persona asociada al cliente
+              const person = await this.person.findUnique({
+                where: { id: admin.personId },
+              });
+        
+              // Si la persona tiene un `profileId`, obtén el perfil asociado
+              const profile = person?.profileId
+                ? await this.profile.findUnique({
+                    where: { id: person.profileId },
+                  })
+                : null;
+        
+              return {
+                ...admin,
+                person,
+                profile,
+              };
+            })
+          );
+        
+        return {
+            data: detailedAdmins,
+            meta: {
+                total: totalPages,
+                page: page,
+                lastPage: lastPage,
+            },
+        };
+    }
+
+    // GET ONE
+
 }
