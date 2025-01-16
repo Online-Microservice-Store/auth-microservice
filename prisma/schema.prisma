@@ -7,12 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// enum Role {
+//   CLIENT
+//   ADMIN
+//   TRADER
+// }
+
 model Person {
   id              String  @id @default(auto()) @map("_id") @db.ObjectId
   name            String
   lastname        String
   identification  String @unique
-  profileId       String? @db.ObjectId 
+  profileId       String? @db.ObjectId
+  // role            Role
 }
 
 model Profile {

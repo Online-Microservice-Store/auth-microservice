@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { RpcException } from '@nestjs/microservices';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { PrismaClient } from '@prisma/client';
 import { CreateEntity, CreatePersonDto, CreateProfileDto, LoginUserDto, RegisterUserDto } from './dto';
 import * as bcrypt from 'bcrypt';
@@ -8,12 +8,13 @@ import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { envs } from 'src/config';
 import { JwtPayload2 } from './interfaces/jwt-payload.interface2';
 import { PaginationDto } from 'common';
+
 @Injectable()
 export class AuthService extends PrismaClient implements OnModuleInit {
     private readonly logger = new Logger("auth-service")
 
     constructor(
-        private readonly jwtService : JwtService
+        private readonly jwtService : JwtService,
     ){
         super();
     }
@@ -31,6 +32,94 @@ export class AuthService extends PrismaClient implements OnModuleInit {
             const {sub, iat, exp, ...profile} = this.jwtService.verify(token, {
                 secret: envs.jwtSecret,
             });
+            
+            return {
+                user: profile,
+                token: await this.signJWT2(profile),
+            }
+        } catch (error) {
+            console.log(error);
+            throw new RpcException({
+                status: 400,
+                message: 'Invalid token'
+            })
+        }
+    }
+
+    async verifyTokenAdmin(token: string){
+        try {
+            const {sub, iat, exp, ...profile} = this.jwtService.verify(token, {
+                secret: envs.jwtSecret,
+            });
+            const personGet = await this.person.findFirst({where: {profileId: profile.id}});
+            const adminGet = await this.admin.findFirst({where: {personId: personGet.id}});
+
+            if(!adminGet){
+                throw new RpcException({
+                    status: 400,
+                    message: 'Unauthorized'
+                });
+            }            
+            // verificar si es persona haciendo uso del id de profile
+            // verificar si es cliente, admin o trader con el id de person que recupero
+            return {
+                user: profile,
+                token: await this.signJWT2(profile),
+            }
+        } catch (error) {
+            console.log(error);
+            throw new RpcException({
+                status: 400,
+                message: 'Invalid token'
+            })
+        }
+    }
+
+    async verifyTokenTrader(token: string){
+        try {
+            const {sub, iat, exp, ...profile} = this.jwtService.verify(token, {
+                secret: envs.jwtSecret,
+            });
+            const personGet = await this.person.findFirst({where: {profileId: profile.id}});
+            const traderGet = await this.trader.findFirst({where: {personId: personGet.id}});
+
+            if(!traderGet){
+                throw new RpcException({
+                    status: 400,
+                    message: 'Unauthorized'
+                });
+            }
+            // verificar si es persona haciendo uso del id de profile
+            // verificar si es cliente, admin o trader con el id de person que recupero
+            return {
+                user: profile,
+                token: await this.signJWT2(profile),
+            }
+        } catch (error) {
+            console.log(error);
+            throw new RpcException({
+                status: 400,
+                message: 'Invalid token'
+            })
+        }
+    }
+
+    async verifyTokenClient(token: string){
+        try {
+            const {sub, iat, exp, ...profile} = this.jwtService.verify(token, {
+                secret: envs.jwtSecret,
+            });
+            const personGet = await this.person.findFirst({where: {profileId: profile.id}});
+            const clientGet = await this.client.findFirst({where: {personId: personGet.id}});
+
+            if(!clientGet){
+                throw new RpcException({
+                    status: 400,
+                    message: 'Unauthorized'
+                });
+            }
+            // verificar si es persona haciendo uso del id de profile
+            // verificar si es cliente, admin o trader con el id de person que recupero
             return {
                 user: profile,
                 token: await this.signJWT2(profile),
@@ -108,7 +197,7 @@ export class AuthService extends PrismaClient implements OnModuleInit {
                     ocupation,
                 }
             })
-    
+            
             const {password: __, ...rest} = newProfile;
             return{
                 profile: rest,
@@ -131,6 +220,7 @@ export class AuthService extends PrismaClient implements OnModuleInit {
             lastname: createEntity.lastname,
             identification: createEntity.identification
         }
+
         const profile : CreateProfileDto = {
             username: createEntity.username,
             password: createEntity.password,
@@ -228,7 +318,7 @@ export class AuthService extends PrismaClient implements OnModuleInit {
         const { email, password } = loginUserDto;
         try {
             const profile = await this.profile.findUnique({
-                where: {email}
+                where: {email},
             });
             if( !profile ){
                 throw new RpcException({
@@ -236,6 +326,39 @@ export class AuthService extends PrismaClient implements OnModuleInit {
                     message: 'Invalid credentials'
                 });
             } 
+            const person = await this.person.findFirst({
+                where: { profileId: profile.id }, // Busca usando profileId
+            });
+
+            if( !person ){
+                throw new RpcException({
+                    status: 400,
+                    message: 'Profile not related to a person'
+                });
+            }
+            //determinar el rol
+            const client = await this.client.findFirst({
+                where: { personId: person.id}
+            });
+            const trader = await this.trader.findFirst({
+                where: {personId: person.id}
+            });
+            const admin = await this.admin.findFirst({
+                where: {personId: person.id}
+            }); 
+            let roles: string[] = [];
+            console.log(client);
+            if (client){
+                roles.push('CLIENT')
+            }
+
+            if(trader){
+                roles.push('TRADER')
+            }
+            
+            if(admin){
+                roles.push('ADMIN')
+            }
 
             const isPasswordValid = bcrypt.compareSync(password, profile.password);
             if(!isPasswordValid){
@@ -249,6 +372,7 @@ export class AuthService extends PrismaClient implements OnModuleInit {
             const {password: __, ...rest} = profile; 
             return {
                 user: rest,
+                roles: roles,
                 token: await this.signJWT2(rest)
             }
 

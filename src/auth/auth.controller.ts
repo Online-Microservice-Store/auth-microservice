@@ -38,6 +38,24 @@ export class AuthController {
   verifyToken(@Payload() token:string){
     return this.authService.verifyToken(token);
   }
+
+  @UseGuards()
+  @MessagePattern('auth.verify.client')
+  verifyTokenClient(@Payload() token:string){
+    return this.authService.verifyTokenClient(token);
+  }
+
+  @UseGuards()
+  @MessagePattern('auth.verify.trader')
+  verifyTokenTrader(@Payload() token:string){
+    return this.authService.verifyTokenTrader(token);
+  }
+
+  @UseGuards()
+  @MessagePattern('auth.verify.admin')
+  verifyTokenAdmin(@Payload() token:string){
+    return this.authService.verifyTokenAdmin(token);
+  }
   
   // GET ALL
   @MessagePattern('auth.find_all.client')
