@@ -73,4 +73,16 @@ export class AuthController {
 
   // GET ONE
 
+  @MessagePattern('auth.find.one.client')
+  get_one_client(@Payload('id') id:string ){
+    return this.authService.get_one_client(id);
+  }
+  @MessagePattern('auth.find.one.trader')
+  get_one_trader(@Payload('id') id:string ){
+    return this.authService.get_one_trader(id);
+  }
+  @MessagePattern('auth.find.one.admin')
+  get_one_admin(@Payload('id') id:string ){
+    return this.authService.get_one_admin(id);
+  }
 }

@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { PrismaClient } from '@prisma/client';
 import { CreateEntity, CreatePersonDto, CreateProfileDto, LoginUserDto, RegisterUserDto } from './dto';
@@ -325,7 +325,8 @@ export class AuthService extends PrismaClient implements OnModuleInit {
                     status: 400,
                     message: 'Invalid credentials'
                 });
-            } 
+            }
+
             const person = await this.person.findFirst({
                 where: { profileId: profile.id }, // Busca usando profileId
             });
@@ -348,16 +349,21 @@ export class AuthService extends PrismaClient implements OnModuleInit {
             }); 
             let roles: string[] = [];
             console.log(client);
+            var rolId = "";
             if (client){
                 roles.push('CLIENT')
+                rolId = client.id
             }
 
             if(trader){
                 roles.push('TRADER')
+                rolId = trader.id
             }
             
             if(admin){
                 roles.push('ADMIN')
+                rolId = admin.id
+
             }
 
             const isPasswordValid = bcrypt.compareSync(password, profile.password);
@@ -371,8 +377,8 @@ export class AuthService extends PrismaClient implements OnModuleInit {
 
             const {password: __, ...rest} = profile; 
             return {
-                user: rest,
-                roles: roles,
+                user: {...rest, rolId: rolId},
+                rols: roles,
                 token: await this.signJWT2(rest)
             }
 
@@ -522,4 +528,122 @@ export class AuthService extends PrismaClient implements OnModuleInit {
 
     // GET ONE
 
+    async get_one_client(id: string) {
+        // Encuentra el administrador basado en su ID
+        const client = await this.client.findFirst({
+          where: { id },
+        });
+      
+        if (!client) {
+          throw new RpcException({
+            message: `Client with id ${id} not found`,
+            status: HttpStatus.NOT_FOUND,
+          });
+        }
+      
+        const person = await this.person.findUnique({
+          where: { id: client.personId },
+        });
+      
+        if (!person) {
+          throw new RpcException({
+            message: `Person associated with Client ID ${id} not found`,
+            status: HttpStatus.NOT_FOUND,
+          });
+        }
+      
+        const profile = person.profileId
+          ? await this.profile.findUnique({
+              where: { id: person.profileId }, // Usa el `profileId` de la Persona
+            })
+          : null;
+      
+        // Retorna la información combinada
+        return {
+          client,
+          person,
+          profile,
+        };
+      }
+      
+
+    async get_one_trader(id: string) {
+        // Encuentra el administrador basado en su ID
+        const trader = await this.trader.findFirst({
+          where: { id },
+        });
+      
+        if (!trader) {
+          throw new RpcException({
+            message: `Trader with id ${id} not found`,
+            status: HttpStatus.NOT_FOUND,
+          });
+        }
+      
+        const person = await this.person.findUnique({
+          where: { id: trader.personId }, 
+        });
+      
+        if (!person) {
+          throw new RpcException({
+            message: `Person associated with Trader ID ${id} not found`,
+            status: HttpStatus.NOT_FOUND,
+          });
+        }
+      
+        // Encuentra el perfil asociado a la persona
+        const profile = person.profileId
+          ? await this.profile.findUnique({
+              where: { id: person.profileId }, // Usa el `profileId` de la Persona
+            })
+          : null;
+      
+        // Retorna la información combinada
+        return {
+          trader,
+          person,
+          profile,
+        };
+      }
+      
+
+    async get_one_admin(id: string) {
+        // Encuentra el administrador basado en su ID
+        const admin = await this.admin.findFirst({
+          where: { id },
+        });
+      
+        if (!admin) {
+          throw new RpcException({
+            message: `Admin with id ${id} not found`,
+            status: HttpStatus.NOT_FOUND,
+          });
+        }
+      
+        const person = await this.person.findUnique({
+          where: { id: admin.personId }, 
+        });
+      
+        if (!person) {
+          throw new RpcException({
+            message: `Person associated with Admin ID ${id} not found`,
+            status: HttpStatus.NOT_FOUND,
+          });
+        }
+      
+        // Encuentra el perfil asociado a la persona
+        const profile = person.profileId
+          ? await this.profile.findUnique({
+              where: { id: person.profileId }, // Usa el `profileId` de la Persona
+            })
+          : null;
+      
+        // Retorna la información combinada
+        return {
+          admin,
+          person,
+          profile,
+        };
+      }
+      
 }
